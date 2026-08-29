@@ -11,18 +11,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - name: Test
         run: go test ./...
       - name: Build Debian package
         run: make deb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rogdelta-debian-amd64
           path: dist/*.deb
