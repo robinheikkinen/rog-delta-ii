@@ -1,0 +1,2 @@
+# Allow the active desktop user to access the ROG Delta II vendor HID interface.
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1afa", TAG+="uaccess"

@@ -1,0 +1,7 @@
+rogdelta (0.1.0) unstable; urgency=medium
+
+  * Initial local package for the ASUS ROG Delta II.
+  * Add PipeWire controls and six EasyEffects sound profiles.
+  * Add desktop launcher and passive HID protocol recorder.
+
+ -- ROG Delta II Linux Project <rogdelta@users.noreply.github.com>  Sat, 29 Aug 2026 20:56:00 +0200

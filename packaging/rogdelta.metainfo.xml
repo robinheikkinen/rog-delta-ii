@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.morten.rogdelta</id>
+  <name>ROG Delta II</name>
+  <summary>Control the ASUS ROG Delta II headset</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>Linux desktop controls, sound profiles, and protocol tools for the ASUS ROG Delta II 2.4 GHz headset.</p>
+  </description>
+  <launchable type="desktop-id">rogdelta.desktop</launchable>
+  <developer id="io.github.morten">
+    <name>ROG Delta II Linux Project</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <modalias>usb:v0B05p1AFA*</modalias>
+    <binary>rogdelta</binary>
+  </provides>
+  <url type="homepage">https://github.com/mbekkelund/rog-delta-ii</url>
+</component>

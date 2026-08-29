@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ROG Delta II
+Comment=Control the ASUS ROG Delta II headset
+Exec=@BINDIR@/rogdelta desktop
+Icon=rogdelta
+Terminal=false
+Categories=AudioVideo;Audio;Settings;
+Keywords=ROG;ASUS;headset;audio;microphone;
+StartupNotify=true
+StartupWMClass=rogdelta

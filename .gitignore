@@ -1,0 +1,10 @@
+/bin/
+/build/
+/dist/
+*.jsonl
+capture*.json
+*.pcap
+*.pcapng
+.idea/
+.vscode/
+.DS_Store

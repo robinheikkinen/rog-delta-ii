@@ -1,0 +1,10 @@
+[Unit]
+Description=ROG Delta II Linux control center
+After=pipewire.service
+
+[Service]
+ExecStart=@BINDIR@/rogdelta serve
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

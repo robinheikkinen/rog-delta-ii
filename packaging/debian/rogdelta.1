@@ -1,0 +1,39 @@
+.TH ROGDELTA 1 "August 2026" "rogdelta 0.1.0" "User Commands"
+.SH NAME
+rogdelta \- control the ASUS ROG Delta II headset on Linux
+.SH SYNOPSIS
+.B rogdelta
+.RI [ command ]
+.SH DESCRIPTION
+.B rogdelta
+provides a desktop control center, PipeWire volume and mute controls,
+EasyEffects sound profiles, device status, and passive HID report capture.
+.SH COMMANDS
+.TP
+.B desktop
+Open the desktop application window.
+.TP
+.B serve
+Run the local web service on 127.0.0.1:17890.
+.TP
+.B status
+Show headset connection and HID information as JSON.
+.TP
+.BI "volume " 0-100
+Set the default PipeWire output volume.
+.TP
+.B mute
+Toggle output mute.
+.TP
+.B mic-mute
+Toggle microphone mute.
+.TP
+.BI "preset " name
+Apply balanced, movie, gaming, communication, music, or bass.
+.TP
+.B record
+Passively record HID reports. See rogdelta help for options.
+.SH FILES
+.TP
+.I /usr/lib/udev/rules.d/99-rog-delta-ii.rules
+Grants the active local user access to the supported headset HID interface.
