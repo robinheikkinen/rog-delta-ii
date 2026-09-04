@@ -20,6 +20,8 @@ type Definition struct {
 
 var frequencies = []float64{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000}
 
+func Frequencies() []float64 { return append([]float64(nil), frequencies...) }
+
 var definitions = []Definition{
 	{ID: "balanced", Name: "Balanced", Description: "Natural and neutral for everyday listening", Gains: []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, OutputGain: 0},
 	{ID: "movie", Name: "Movie", Description: "Cinematic bass, clear dialogue and spacious detail", Gains: []float64{2, 3, 2, 0.5, -0.5, 0, 1.5, 2, 1, 0}, OutputGain: -3},
@@ -53,18 +55,52 @@ func Apply(id string) error {
 	return nil
 }
 
-func Install() error {
-	data := os.Getenv("XDG_DATA_HOME")
-	// Snap-packaged IDEs may leak their private XDG path into launched terminals.
-	// Native EasyEffects cannot see presets stored inside that IDE-specific tree.
-	if data == "" || strings.Contains(filepath.Clean(data), string(filepath.Separator)+"snap"+string(filepath.Separator)) {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		data = filepath.Join(home, ".local", "share")
+// ApplyCustom installs and loads a user-defined ten-band equalizer curve.
+func ApplyCustom(gains []float64) error {
+	if len(gains) != len(frequencies) {
+		return fmt.Errorf("custom equalizer requires %d bands", len(frequencies))
 	}
-	dir := filepath.Join(data, "easyeffects", "output")
+	for _, gain := range gains {
+		if gain < -12 || gain > 12 {
+			return errors.New("equalizer gains must be between -12 and 12 dB")
+		}
+	}
+	d := Definition{ID: "custom", Name: "Custom", Description: "Your custom equalizer", Gains: append([]float64(nil), gains...)}
+	// Leave enough headroom for the largest boost to avoid digital clipping.
+	for _, gain := range gains {
+		if gain > -d.OutputGain {
+			d.OutputGain = -gain
+		}
+	}
+	if _, err := exec.LookPath("easyeffects"); err != nil {
+		return errors.New("EasyEffects is not installed")
+	}
+	data, err := render(d)
+	if err != nil {
+		return err
+	}
+	dir, err := outputDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, fileName(d)+".json"), data, 0o644); err != nil {
+		return err
+	}
+	cmd := exec.Command("easyeffects", "--load-preset", fileName(d))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("load EasyEffects preset: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
+func Install() error {
+	dir, err := outputDir()
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -78,6 +114,20 @@ func Install() error {
 		}
 	}
 	return nil
+}
+
+func outputDir() (string, error) {
+	data := os.Getenv("XDG_DATA_HOME")
+	// Snap-packaged IDEs may leak their private XDG path into launched terminals.
+	// Native EasyEffects cannot see presets stored inside that IDE-specific tree.
+	if data == "" || strings.Contains(filepath.Clean(data), string(filepath.Separator)+"snap"+string(filepath.Separator)) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		data = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(data, "easyeffects", "output"), nil
 }
 
 func lookup(id string) (Definition, bool) {

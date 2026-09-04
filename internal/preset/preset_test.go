@@ -28,3 +28,14 @@ func TestUnknownPreset(t *testing.T) {
 		t.Fatal("unknown preset matched")
 	}
 }
+
+func TestCustomEqualizerValidation(t *testing.T) {
+	if err := ApplyCustom([]float64{0}); err == nil {
+		t.Fatal("short custom curve was accepted")
+	}
+	gains := make([]float64, len(Frequencies()))
+	gains[3] = 12.5
+	if err := ApplyCustom(gains); err == nil {
+		t.Fatal("out-of-range gain was accepted")
+	}
+}
