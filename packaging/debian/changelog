@@ -1,3 +1,18 @@
+rogdelta (0.2.1) unstable; urgency=medium
+
+  * Persist volume, sidetone, sound profile, and custom equalizer settings.
+  * Restore saved audio settings and UI state when the application starts.
+
+ -- ROG Delta II Linux Project <rogdelta@users.noreply.github.com>  Fri, 04 Sep 2026 15:45:00 +0200
+
+rogdelta (0.2.0) unstable; urgency=medium
+
+  * Add adjustable low-latency PipeWire sidetone.
+  * Add a custom ten-band EasyEffects equalizer.
+  * Add clipping-safe automatic output headroom for custom curves.
+
+ -- ROG Delta II Linux Project <rogdelta@users.noreply.github.com>  Fri, 04 Sep 2026 15:30:00 +0200
+
 rogdelta (0.1.0) unstable; urgency=medium
 
   * Initial local package for the ASUS ROG Delta II.

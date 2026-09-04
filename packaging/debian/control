@@ -4,10 +4,11 @@ Section: sound
 Priority: optional
 Architecture: @ARCH@
 Maintainer: ROG Delta II Linux Project <rogdelta@users.noreply.github.com>
-Depends: libc6, easyeffects (>= 8), wireplumber, vivaldi-stable | chromium | chromium-browser | google-chrome-stable
+Depends: libc6, easyeffects (>= 8), pipewire-bin, wireplumber, vivaldi-stable | chromium | chromium-browser | google-chrome-stable
 Recommends: pipewire-pulse
 Homepage: https://github.com/mbekkelund/rog-delta-ii
 Description: Linux control center for the ASUS ROG Delta II headset
  Native Go desktop application and command-line utility for the ASUS ROG
  Delta II 2.4 GHz headset. It provides device detection, PipeWire volume and
- mute controls, EasyEffects sound presets, and passive HID protocol capture.
+ mute controls, sidetone, custom equalization, EasyEffects sound presets, and
+ passive HID protocol capture.

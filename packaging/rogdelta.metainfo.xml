@@ -18,4 +18,12 @@
     <binary>rogdelta</binary>
   </provides>
   <url type="homepage">https://github.com/mbekkelund/rog-delta-ii</url>
+  <releases>
+    <release version="0.2.1" date="2026-09-04">
+      <description><p>Persists and restores audio controls between application sessions.</p></description>
+    </release>
+    <release version="0.2.0" date="2026-09-04">
+      <description><p>Adds adjustable sidetone and a custom ten-band equalizer.</p></description>
+    </release>
+  </releases>
 </component>
