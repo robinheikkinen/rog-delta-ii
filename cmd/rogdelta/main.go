@@ -17,8 +17,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mbekkelund/rog-delta-ii/internal/audio"
 	"github.com/mbekkelund/rog-delta-ii/internal/device"
 	"github.com/mbekkelund/rog-delta-ii/internal/preset"
+	"github.com/mbekkelund/rog-delta-ii/internal/settings"
 	"github.com/mbekkelund/rog-delta-ii/internal/webui"
 )
 
@@ -127,39 +129,14 @@ func serve(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/static/", http.StatusTemporaryRedirect)
-	})
-	mux.Handle("/", webui.Handler())
-	mux.HandleFunc("GET /api/status", func(w http.ResponseWriter, _ *http.Request) { jsonResponse(w, http.StatusOK, device.Detect()) })
-	mux.HandleFunc("GET /api/presets", presetsListHandler)
-	mux.HandleFunc("POST /api/presets/{id}", presetApplyHandler)
-	mux.HandleFunc("POST /api/volume", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Value int `json:"value"`
-		}
-		if json.NewDecoder(r.Body).Decode(&body) != nil || body.Value < 0 || body.Value > 100 {
-			jsonResponse(w, 400, map[string]string{"error": "value must be 0-100"})
-			return
-		}
-		if err := wpctl("set-volume", "@DEFAULT_AUDIO_SINK@", fmt.Sprintf("%d%%", body.Value)); err != nil {
-			jsonResponse(w, 500, map[string]string{"error": err.Error()})
-			return
-		}
-		jsonResponse(w, 200, map[string]bool{"ok": true})
-	})
-	mux.HandleFunc("POST /api/mute/{kind}", func(w http.ResponseWriter, r *http.Request) {
-		target := "@DEFAULT_AUDIO_SINK@"
-		if strings.EqualFold(r.PathValue("kind"), "mic") {
-			target = "@DEFAULT_AUDIO_SOURCE@"
-		}
-		if err := wpctl("set-mute", target, "toggle"); err != nil {
-			jsonResponse(w, 500, map[string]string{"error": err.Error()})
-			return
-		}
-		jsonResponse(w, 200, map[string]bool{"ok": true})
-	})
+	sidetone := audio.NewSidetone()
+	defer sidetone.Close()
+	store, err := settings.Open()
+	if err != nil {
+		return fmt.Errorf("open settings: %w", err)
+	}
+	restore(store.Get(), sidetone)
+	mux := routes(sidetone, store)
 	listener, err := net.Listen("tcp", *listen)
 	if err != nil {
 		return err
@@ -201,16 +178,15 @@ func desktop(args []string) error {
 	if err != nil {
 		return err
 	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/static/", http.StatusTemporaryRedirect)
-	})
-	mux.Handle("/", webui.Handler())
-	mux.HandleFunc("GET /api/status", func(w http.ResponseWriter, _ *http.Request) { jsonResponse(w, http.StatusOK, device.Detect()) })
-	mux.HandleFunc("GET /api/presets", presetsListHandler)
-	mux.HandleFunc("POST /api/presets/{id}", presetApplyHandler)
-	mux.HandleFunc("POST /api/volume", volumeHandler)
-	mux.HandleFunc("POST /api/mute/{kind}", muteHandler)
+	sidetone := audio.NewSidetone()
+	defer sidetone.Close()
+	store, err := settings.Open()
+	if err != nil {
+		listener.Close()
+		return fmt.Errorf("open settings: %w", err)
+	}
+	restore(store.Get(), sidetone)
+	mux := routes(sidetone, store)
 
 	profile, err := os.MkdirTemp("", "rogdelta-desktop-")
 	if err != nil {
@@ -239,6 +215,83 @@ func desktop(args []string) error {
 	return serveErr
 }
 
+func routes(sidetone *audio.Sidetone, store *settings.Store) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/", http.StatusTemporaryRedirect)
+	})
+	mux.Handle("/", webui.Handler())
+	mux.HandleFunc("GET /api/status", func(w http.ResponseWriter, _ *http.Request) { jsonResponse(w, http.StatusOK, device.Detect()) })
+	mux.HandleFunc("GET /api/presets", presetsListHandler)
+	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, _ *http.Request) { jsonResponse(w, 200, store.Get()) })
+	mux.HandleFunc("POST /api/presets/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if !presetApplyHandler(w, r) {
+			return
+		}
+		_ = store.Update(func(s *settings.State) { s.ActivePreset = r.PathValue("id"); s.CustomEQ = false })
+	})
+	mux.HandleFunc("POST /api/equalizer", func(w http.ResponseWriter, r *http.Request) { equalizerHandler(w, r, store) })
+	mux.HandleFunc("POST /api/sidetone", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Enabled bool `json:"enabled"`
+			Level   int  `json:"level"`
+		}
+		if json.NewDecoder(r.Body).Decode(&body) != nil {
+			jsonResponse(w, 400, map[string]string{"error": "invalid request"})
+			return
+		}
+		if err := sidetone.Set(body.Enabled, body.Level); err != nil {
+			jsonResponse(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		_ = store.Update(func(s *settings.State) { s.SidetoneEnabled = body.Enabled; s.SidetoneLevel = body.Level })
+		jsonResponse(w, 200, map[string]any{"ok": true, "enabled": body.Enabled, "level": body.Level})
+	})
+	mux.HandleFunc("POST /api/volume", func(w http.ResponseWriter, r *http.Request) { volumeHandler(w, r, store) })
+	mux.HandleFunc("POST /api/mute/{kind}", muteHandler)
+	return mux
+}
+
+func restore(state settings.State, sidetone *audio.Sidetone) {
+	if err := wpctl("set-volume", "@DEFAULT_AUDIO_SINK@", fmt.Sprintf("%d%%", state.Volume)); err != nil {
+		log.Printf("restore volume: %v", err)
+	}
+	var err error
+	if state.CustomEQ {
+		err = preset.ApplyCustom(state.Gains)
+	} else if state.ActivePreset != "" {
+		err = preset.Apply(state.ActivePreset)
+	}
+	if err != nil {
+		log.Printf("restore equalizer: %v", err)
+	}
+	if state.SidetoneEnabled {
+		if err := sidetone.Set(true, state.SidetoneLevel); err != nil {
+			log.Printf("restore sidetone: %v", err)
+		}
+	}
+}
+
+func equalizerHandler(w http.ResponseWriter, r *http.Request, store *settings.Store) {
+	var body struct {
+		Gains []float64 `json:"gains"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		jsonResponse(w, 400, map[string]string{"error": "invalid request"})
+		return
+	}
+	if err := preset.ApplyCustom(body.Gains); err != nil {
+		jsonResponse(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	_ = store.Update(func(s *settings.State) {
+		s.Gains = append([]float64(nil), body.Gains...)
+		s.CustomEQ = true
+		s.ActivePreset = ""
+	})
+	jsonResponse(w, 200, map[string]any{"ok": true, "frequencies": preset.Frequencies()})
+}
+
 func findAppBrowser() (string, error) {
 	for _, name := range []string{"vivaldi-stable", "vivaldi", "google-chrome-stable", "google-chrome", "chromium", "chromium-browser"} {
 		if path, err := exec.LookPath(name); err == nil {
@@ -248,7 +301,7 @@ func findAppBrowser() (string, error) {
 	return "", errors.New("no supported app-mode browser found (install Vivaldi, Chromium, or Chrome)")
 }
 
-func volumeHandler(w http.ResponseWriter, r *http.Request) {
+func volumeHandler(w http.ResponseWriter, r *http.Request, store *settings.Store) {
 	var body struct {
 		Value int `json:"value"`
 	}
@@ -260,6 +313,7 @@ func volumeHandler(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
+	_ = store.Update(func(s *settings.State) { s.Volume = body.Value })
 	jsonResponse(w, 200, map[string]bool{"ok": true})
 }
 
@@ -279,13 +333,14 @@ func presetsListHandler(w http.ResponseWriter, _ *http.Request) {
 	jsonResponse(w, http.StatusOK, preset.List())
 }
 
-func presetApplyHandler(w http.ResponseWriter, r *http.Request) {
+func presetApplyHandler(w http.ResponseWriter, r *http.Request) bool {
 	id := r.PathValue("id")
 	if err := preset.Apply(id); err != nil {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
+		return false
 	}
 	jsonResponse(w, http.StatusOK, map[string]any{"ok": true, "active": id})
+	return true
 }
 
 func jsonResponse(w http.ResponseWriter, status int, value any) {
