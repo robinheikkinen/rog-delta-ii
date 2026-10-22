@@ -46,7 +46,7 @@ will then be available in the desktop application menu.
 ## Build from source
 
 ```sh
-git clone https://github.com/mbekkelund/rog-delta-ii.git
+git clone https://github.com/robinheikkinen/rog-delta-ii.git
 cd rog-delta-ii
 make test build
 ./bin/rogdelta desktop
@@ -97,3 +97,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before sharing captures or implementing d
 
 Fork of [mbekkelund/rog-delta-ii](https://github.com/mbekkelund/rog-delta-ii) with a compact window and a
 battery icon in the system tray (`make install-tray`, then `rogdelta tray`). Not affiliated with ASUS.
+
+The `.deb` on the upstream releases page does not include these additions, so build this fork from source
+(see above). The last battery level is remembered in `~/.config/rogdelta/battery.json` so it shows right after
+start.
