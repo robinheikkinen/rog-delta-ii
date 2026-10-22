@@ -38,6 +38,8 @@ func run(args []string) error {
 		return serve(args)
 	}
 	switch args[0] {
+	case "tray":
+		return runTray()
 	case "serve":
 		return serve(args[1:])
 	case "desktop":
@@ -79,6 +81,7 @@ func usage() {
 	fmt.Print(`ROG Delta II control and protocol discovery for Linux
 
 Usage:
+  rogdelta tray                  (battery icon in the system tray)
   rogdelta [serve] [--listen 127.0.0.1:17890]
   rogdelta desktop
   rogdelta status
@@ -195,7 +198,7 @@ func desktop(args []string) error {
 	}
 	defer os.RemoveAll(profile)
 	url := "http://" + listener.Addr().String() + "/"
-	cmd := exec.Command(browser, "--app="+url, "--user-data-dir="+profile, "--no-first-run", "--disable-sync")
+	cmd := exec.Command(browser, "--app="+url, "--user-data-dir="+profile, "--window-size=520,600", "--disable-features=Translate,TranslateUI", "--lang=en-US", "--no-first-run", "--disable-sync")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	closed := make(chan struct{})
 	serverErr := make(chan error, 1)
@@ -222,7 +225,7 @@ func routes(sidetone *audio.Sidetone, store *settings.Store) *http.ServeMux {
 		http.Redirect(w, r, "/static/", http.StatusTemporaryRedirect)
 	})
 	mux.Handle("/", webui.Handler())
-	mux.HandleFunc("GET /api/status", func(w http.ResponseWriter, _ *http.Request) { jsonResponse(w, http.StatusOK, device.Detect()) })
+	mux.HandleFunc("GET /api/status", statusHandler)
 	mux.HandleFunc("GET /api/presets", presetsListHandler)
 	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, _ *http.Request) { jsonResponse(w, 200, store.Get()) })
 	mux.HandleFunc("POST /api/presets/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -316,6 +319,25 @@ func volumeHandler(w http.ResponseWriter, r *http.Request, store *settings.Store
 	}
 	_ = store.Update(func(s *settings.State) { s.Volume = body.Value })
 	jsonResponse(w, 200, map[string]bool{"ok": true})
+}
+
+type statusResponse struct {
+	device.Status
+	OutputMuted bool `json:"outputMuted"`
+	MicMuted    bool `json:"micMuted"`
+}
+
+func isMuted(target string) bool {
+	out, err := exec.Command("wpctl", "get-volume", target).Output()
+	return err == nil && strings.Contains(string(out), "[MUTED]")
+}
+
+func statusHandler(w http.ResponseWriter, _ *http.Request) {
+	jsonResponse(w, http.StatusOK, statusResponse{
+		Status:      device.Detect(),
+		OutputMuted: isMuted("@DEFAULT_AUDIO_SINK@"),
+		MicMuted:    isMuted("@DEFAULT_AUDIO_SOURCE@"),
+	})
 }
 
 func muteHandler(w http.ResponseWriter, r *http.Request) {

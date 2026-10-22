@@ -1,4 +1,4 @@
-.PHONY: build test run install deb clean
+.PHONY: build test run install install-tray deb clean
 
 VERSION ?= 0.1.0
 ARCH ?= $(shell dpkg --print-architecture 2>/dev/null || echo amd64)
@@ -19,6 +19,14 @@ install: build
 	systemctl --user daemon-reload
 	-update-desktop-database $(HOME)/.local/share/applications
 	@echo "ROG Delta II is now available in the application menu"
+
+install-tray: install
+	install -Dm644 packaging/rogdelta-tray.desktop $(HOME)/.config/autostart/rogdelta-tray.desktop
+	sed -i 's|@BINDIR@|$(HOME)/.local/bin|' $(HOME)/.config/autostart/rogdelta-tray.desktop
+	install -Dm644 packaging/rogdelta-tray.desktop $(HOME)/.local/share/applications/rogdelta-tray.desktop
+	sed -i 's|@BINDIR@|$(HOME)/.local/bin|' $(HOME)/.local/share/applications/rogdelta-tray.desktop
+	-update-desktop-database $(HOME)/.local/share/applications
+	@echo "The tray icon will start at login. Start it now from the menu (ROG Delta II tray) or: setsid rogdelta tray >/dev/null 2>&1 &"
 
 deb: test build
 	rm -rf build/deb

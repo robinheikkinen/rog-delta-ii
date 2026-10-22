@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ROG Delta II tray
+Comment=Battery level of the ASUS ROG Delta II in the system tray
+Exec=@BINDIR@/rogdelta tray
+Icon=rogdelta
+Terminal=false
+X-KDE-autostart-after=panel
