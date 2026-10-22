@@ -21,8 +21,9 @@ A native Go control center for the ASUS ROG Delta II 2.4 GHz headset
 - Passively records timestamped HID reports for protocol research.
 - Ships Debian packaging, a narrowly scoped udev rule, and a systemd user unit.
 
-Battery, RGB, hardware sidetone, and hardware EQ remain discovery features until their HID commands have
-been verified. The recorder never writes to the device.
+The battery level and charging state are read from vendor reports `cc 12 09 00 00 XX` (XX = percent) and
+`cc 12 08 00 00 YY` (YY = 1 while charging). RGB, hardware sidetone, and hardware EQ remain discovery features
+until their HID commands have been verified. The recorder never writes to the device.
 
 ## Requirements
 

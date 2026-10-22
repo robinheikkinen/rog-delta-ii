@@ -22,13 +22,16 @@ const (
 var ErrNotFound = errors.New("ROG Delta II dongle not found")
 
 type Status struct {
-	Connected bool   `json:"connected"`
-	Name      string `json:"name"`
-	VendorID  string `json:"vendorId"`
-	ProductID string `json:"productId"`
-	HIDRaw    string `json:"hidraw,omitempty"`
-	Readable  bool   `json:"readable"`
-	Protocol  string `json:"protocol"`
+	Connected      bool       `json:"connected"`
+	Name           string     `json:"name"`
+	VendorID       string     `json:"vendorId"`
+	ProductID      string     `json:"productId"`
+	HIDRaw         string     `json:"hidraw,omitempty"`
+	Readable       bool       `json:"readable"`
+	Protocol       string     `json:"protocol"`
+	BatteryPercent *int       `json:"batteryPercent,omitempty"`
+	Charging       *bool      `json:"charging,omitempty"`
+	BatteryUpdated *time.Time `json:"batteryUpdated,omitempty"`
 }
 
 func Detect() Status {
@@ -50,6 +53,14 @@ func Detect() Status {
 			f.Close()
 		}
 		break
+	}
+	if s.Connected {
+		if p, c, u := latest.snapshot(); p != nil || c != nil {
+			s.BatteryPercent, s.Charging = p, c
+			if p != nil && !u.IsZero() {
+				s.BatteryUpdated = &u
+			}
+		}
 	}
 	return s
 }

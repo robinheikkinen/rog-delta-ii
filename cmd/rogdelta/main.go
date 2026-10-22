@@ -216,6 +216,7 @@ func desktop(args []string) error {
 }
 
 func routes(sidetone *audio.Sidetone, store *settings.Store) *http.ServeMux {
+	device.StartMonitor(context.Background())
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/", http.StatusTemporaryRedirect)
