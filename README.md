@@ -92,3 +92,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before sharing captures or implementing d
 ## License
 
 [MIT](LICENSE)
+
+## About this fork
+
+Fork of [mbekkelund/rog-delta-ii](https://github.com/mbekkelund/rog-delta-ii) with a compact window and a
+battery icon in the system tray (`make install-tray`, then `rogdelta tray`). Not affiliated with ASUS.
